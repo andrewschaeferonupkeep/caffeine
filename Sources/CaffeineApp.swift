@@ -33,12 +33,30 @@ final class Caffeinator: ObservableObject {
     @AppStorage("customMinutes") var customMinutes = 90
     @AppStorage("waitPID") var waitPID = ""            // -w
     @AppStorage("utility") var utility = ""            // trailing utility args
+    @AppStorage("showOverlay") var showOverlay = true { didSet { refreshOverlay() } }
 
     @Published private(set) var isActive = false
+    @Published private(set) var startDate: Date?
     @Published private(set) var endDate: Date?
     @Published var lastError: String?
 
     private var process: Process?
+    private lazy var overlay = OverlayPanel(caffeinator: self)
+
+    /// Human-readable names of the assertions currently enabled.
+    var flagNames: [String] {
+        var names: [String] = []
+        if display { names.append("Display") }
+        if idle { names.append("Idle") }
+        if disk { names.append("Disk") }
+        if system { names.append("System") }
+        if user { names.append("User active") }
+        return names.isEmpty ? ["Idle (default)"] : names
+    }
+
+    func refreshOverlay() {
+        if isActive && showOverlay { overlay.show() } else { overlay.hide() }
+    }
 
     var timeout: TimeoutOption {
         get { TimeoutOption(rawValue: timeoutRaw) ?? .none }
@@ -88,7 +106,8 @@ final class Caffeinator: ObservableObject {
 
     func toggle() { isActive ? stop() : start() }
 
-    func start() {
+    /// - Parameter keepingStart: preserve the session start time (used when restarting with new options).
+    func start(keepingStart: Date? = nil) {
         guard !isActive else { return }
         lastError = nil
         if pidIsInvalid { lastError = "PID must be a number."; return }
@@ -103,17 +122,21 @@ final class Caffeinator: ObservableObject {
                 guard let self, self.process === proc else { return }
                 self.process = nil
                 self.isActive = false
+                self.startDate = nil
                 self.endDate = nil
+                self.refreshOverlay()
             }
         }
         do {
             try p.run()
             process = p
             isActive = true
+            startDate = keepingStart ?? Date()
             endDate = trimmedUtility.isEmpty ? timeoutSeconds.map { Date().addingTimeInterval(TimeInterval($0)) } : nil
         } catch {
             lastError = "Failed to start caffeinate: \(error.localizedDescription)"
         }
+        refreshOverlay()
     }
 
     func stop() {
@@ -121,14 +144,17 @@ final class Caffeinator: ObservableObject {
         process = nil
         if p.isRunning { p.terminate() }
         isActive = false
+        startDate = nil
         endDate = nil
+        refreshOverlay()
     }
 
-    /// Restart with new options if currently running.
+    /// Restart with new options if currently running, keeping the session's start time.
     func applyChanges() {
         guard isActive else { return }
+        let start = startDate
         stop()
-        start()
+        self.start(keepingStart: start)
     }
 }
 
@@ -265,6 +291,8 @@ struct MenuContent: View {
             if let err = c.lastError {
                 Text(err).font(.caption).foregroundStyle(.red)
             }
+            Toggle("Show overlay while awake", isOn: $c.showOverlay)
+                .toggleStyle(.checkbox)
             HStack {
                 Toggle("Launch at login", isOn: $launchAtLogin)
                     .toggleStyle(.checkbox)
