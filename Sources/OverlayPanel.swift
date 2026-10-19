@@ -50,6 +50,14 @@ private struct OverlayView: View {
                     Text(start, style: .timer)
                         .font(.system(.title3, design: .monospaced).weight(.semibold))
                 }
+                Spacer(minLength: 8)
+                Button { c.stop() } label: {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Turn off Caffeine")
             }
 
             Text(c.flagNames.joined(separator: " · "))
