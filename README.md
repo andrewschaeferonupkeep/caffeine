@@ -17,7 +17,7 @@ A tiny macOS menu bar app that wraps the built-in `caffeinate` command. Click th
 - Advanced:
   - Wait for PID (`-w`): stay awake until a given process exits
   - Run a command: stay awake until the command finishes
-- Floating overlay showing elapsed session time and active settings (draggable, right-click to hide or turn off)
+- Floating overlay showing elapsed session time and active settings (draggable, with a stop button; right-click to hide or turn off)
 - Live preview of the exact `caffeinate` command being run
 - Settings persist across restarts; changing an option while running restarts `caffeinate` with the new options
 - `caffeinate` is tied to the app's process, so it never keeps running after the app quits or crashes
